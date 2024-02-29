@@ -144,58 +144,178 @@ class GameTile extends StatelessWidget {
 
   GameTile({required this.game});
 
+  void _showBetForm(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Create Bet'),
+          content: BetForm(gameId: game.id),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: EdgeInsets.all(8.0),
-      padding: EdgeInsets.all(8.0),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10.0),
-        border: Border.all(color: Colors.grey[300]!),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.5),
-            spreadRadius: 1,
-            blurRadius: 2,
-            offset: Offset(0, 1),
-          ),
-        ],
+    return GestureDetector(
+      onTap: () => _showBetForm(context),
+      child: Container(
+        margin: EdgeInsets.all(8.0),
+        padding: EdgeInsets.all(8.0),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(10.0),
+          border: Border.all(color: Colors.grey[300]!),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.5),
+              spreadRadius: 1,
+              blurRadius: 2,
+              offset: Offset(0, 1),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(
+              DateFormat('dd/MM/yyyy HH:mm').format(game.dateTimeUTC),
+              style: TextStyle(
+                fontSize: 16.0,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            Divider(color: Colors.grey),
+            Text(
+              '${game.homeTeam} vs ${game.awayTeam}',
+              style: TextStyle(
+                fontSize: 20.0,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            Divider(color: Colors.grey),
+            game.isClosed
+                ? Text(
+              'Score: ${game.homeTeamScore} - ${game.awayTeamScore}',
+              style: TextStyle(
+                fontSize: 18.0,
+                color: Colors.red[700],
+                fontWeight: FontWeight.bold,
+              ),
+            )
+                : Text(
+              'Match not yet played',
+              style: TextStyle(
+                fontSize: 18.0,
+                color: Colors.grey[700],
+              ),
+            ),
+          ],
+        ),
       ),
+    );
+  }
+}
+
+class BetForm extends StatefulWidget {
+  final int gameId;
+
+  BetForm({required this.gameId});
+
+  @override
+  _BetFormState createState() => _BetFormState();
+}
+
+class _BetFormState extends State<BetForm> {
+  final _formKey = GlobalKey<FormState>();
+  String assertion = '';
+  int amount = 0;
+  int target = 0;
+  String creatorEmail = '';
+  bool homeTeamWinner = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Form(
+      key: _formKey,
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Text(
-            DateFormat('dd/MM/yyyy HH:mm').format(game.dateTimeUTC),
-            style: TextStyle(
-              fontSize: 16.0,
-              fontWeight: FontWeight.bold,
-            ),
+          TextFormField(
+            decoration: InputDecoration(labelText: 'Assertion'),
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Please enter some text';
+              }
+              return null;
+            },
+            onChanged: (value) {
+              setState(() {
+                assertion = value;
+              });
+            },
           ),
-          Divider(color: Colors.grey),
-          Text(
-            '${game.homeTeam} vs ${game.awayTeam}',
-            style: TextStyle(
-              fontSize: 20.0,
-              fontWeight: FontWeight.bold,
-            ),
+          TextFormField(
+            decoration: InputDecoration(labelText: 'Amount'),
+            keyboardType: TextInputType.number,
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Please enter a number';
+              }
+              return null;
+            },
+            onChanged: (value) {
+              setState(() {
+                amount = int.parse(value);
+              });
+            },
           ),
-          Divider(color: Colors.grey),
-          game.isClosed
-              ? Text(
-            'Score: ${game.homeTeamScore} - ${game.awayTeamScore}',
-            style: TextStyle(
-              fontSize: 18.0,
-              color: Colors.red[700],
-              fontWeight: FontWeight.bold,
-            ),
-          )
-              : Text(
-            'Match not yet played',
-            style: TextStyle(
-              fontSize: 18.0,
-              color: Colors.grey[700],
-            ),
+          TextFormField(
+            decoration: InputDecoration(labelText: 'Target'),
+            keyboardType: TextInputType.number,
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Please enter a number';
+              }
+              return null;
+            },
+            onChanged: (value) {
+              setState(() {
+                target = int.parse(value);
+              });
+            },
+          ),
+          TextFormField(
+            decoration: InputDecoration(labelText: 'Creator Email'),
+            keyboardType: TextInputType.emailAddress,
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Please enter an email';
+              }
+              return null;
+            },
+            onChanged: (value) {
+              setState(() {
+                creatorEmail = value;
+              });
+            },
+          ),
+          CheckboxListTile(
+            title: Text('Home Team Winner'),
+            value: homeTeamWinner,
+            onChanged: (newValue) {
+              setState(() {
+                homeTeamWinner = newValue!;
+              });
+            },
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (_formKey.currentState!.validate()) {
+                // Save the bet
+              }
+            },
+            child: Text('Submit'),
           ),
         ],
       ),
