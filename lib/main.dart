@@ -1,95 +1,155 @@
-import 'package:english_words/english_words.dart';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:intl/intl.dart';
 
 void main() {
   runApp(MyApp());
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (context) => MyAppState(),
-      child: MaterialApp(
-        title: 'Namer App',
-        theme: ThemeData(
-          useMaterial3: true,
-          colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepOrange),
-        ),
-        home: MyHomePage(),
+    return MaterialApp(
+      title: 'Games App',
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
       ),
+      home: MyHomePage(),
     );
-  }
-}
-
-class MyAppState extends ChangeNotifier {
-  var current = WordPair.random();
-
-  void getNext() {
-    current = WordPair.random();
-    notifyListeners();
   }
 }
 
 class MyHomePage extends StatelessWidget {
+  Future<List<Game>> fetchGames() async {
+    final response = await http.get(Uri.parse('http://10.0.2.2:3001/games'));
+
+    if (response.statusCode == 200) {
+      List jsonResponse = json.decode(response.body);
+      return jsonResponse.map((game) => Game.fromJson(game)).toList();
+    } else {
+      throw Exception('Failed to load games');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    var appState = context.watch<MyAppState>();
-    var pair = appState.current;
-
     return Scaffold(
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center, // This will center the children vertically
-          children: [
-            BigCard(pair: pair),
-            SizedBox(height: 10),
-            ElevatedButton(
-              onPressed: () {
-                appState.getNext();
-                print('button pressed!');
+      appBar: AppBar(
+        title: Text('Games App'),
+      ),
+      body: FutureBuilder<List<Game>>(
+        future: fetchGames(),
+        builder: (context, snapshot) {
+          if (snapshot.hasData) {
+            return ListView.builder(
+              itemCount: snapshot.data!.length,
+              itemBuilder: (context, index) {
+                return GameTile(game: snapshot.data![index]);
               },
-              child: Text('Next'),
-            ),
-          ],
-        ),
+            );
+          } else if (snapshot.hasError) {
+            return Text("${snapshot.error}");
+          }
+
+          return CircularProgressIndicator();
+        },
       ),
     );
   }
 }
 
-class BigCard extends StatelessWidget {
-  const BigCard({
-    super.key,
-    required this.pair,
+class Game {
+  final int id;
+  final String homeTeam;
+  final String awayTeam;
+  final DateTime dateTimeUTC;
+  final bool isClosed;
+  final int? homeTeamScore;
+  final int? awayTeamScore;
+
+  Game({
+    required this.id,
+    required this.homeTeam,
+    required this.awayTeam,
+    required this.dateTimeUTC,
+    required this.isClosed,
+    this.homeTeamScore,
+    this.awayTeamScore,
   });
 
-  final WordPair pair;
+  factory Game.fromJson(Map<String, dynamic> json) {
+    return Game(
+      id: json['id'],
+      homeTeam: json['homeTeam'],
+      awayTeam: json['awayTeam'],
+      dateTimeUTC: DateTime.parse(json['dateTimeUTC']),
+      isClosed: json['isClosed'],
+      homeTeamScore: json['homeTeamScore'],
+      awayTeamScore: json['awayTeamScore'],
+    );
+  }
+}
+
+class GameTile extends StatelessWidget {
+  final Game game;
+
+  GameTile({required this.game});
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final style = theme.textTheme.displayMedium!.copyWith(
-      color: theme.colorScheme.onPrimary,
-      fontWeight: FontWeight.bold, // Make the text bold
-    );
-
-    return Card(
-      color: theme.colorScheme.primary,
-      shadowColor: Colors.black, // Add shadow color
-      elevation: 8, // Add elevation for shadow
-      shape: RoundedRectangleBorder( // Add rounded corners
-        borderRadius: BorderRadius.circular(15),
+    return Container(
+      margin: EdgeInsets.all(8.0),
+      padding: EdgeInsets.all(8.0),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10.0),
+        border: Border.all(color: Colors.grey[300]!),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.5),
+            spreadRadius: 1,
+            blurRadius: 2,
+            offset: Offset(0, 1),
+          ),
+        ],
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Text(
-          "${pair.first} ${pair.second}",
-          style: style,
-          semanticsLabel: "${pair.first} ${pair.second}",),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(
+            DateFormat('dd/MM/yyyy HH:mm').format(game.dateTimeUTC),
+            style: TextStyle(
+              fontSize: 16.0,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          Divider(color: Colors.grey),
+          Text(
+            '${game.homeTeam} vs ${game.awayTeam}',
+            style: TextStyle(
+              fontSize: 20.0,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          Divider(color: Colors.grey),
+          game.isClosed
+              ? Text(
+            'Score: ${game.homeTeamScore} - ${game.awayTeamScore}',
+            style: TextStyle(
+              fontSize: 18.0,
+              color: Colors.red[700],
+              fontWeight: FontWeight.bold,
+            ),
+          )
+              : Text(
+            'Match not yet played',
+            style: TextStyle(
+              fontSize: 18.0,
+              color: Colors.grey[700],
+            ),
+          ),
+        ],
       ),
     );
   }
